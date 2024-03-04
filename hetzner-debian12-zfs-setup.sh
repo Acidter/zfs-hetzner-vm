@@ -2,7 +2,7 @@
 
 : <<'end_header_info'
 (c) Andrey Prokopenko job@terem.fr
-fully automatic script to install Debian 11 with ZFS root on Hetzner VPS
+fully automatic script to install Debian 12 with ZFS root on Hetzner VPS
 WARNING: all data on the disk will be destroyed
 How to use: add SSH key to the rescue console, set it OS to linux64, then press "mount rescue and power cycle" button
 Next, connect via SSH to console, and run the script
@@ -65,7 +65,7 @@ function print_step_info_header {
 # ${FUNCNAME[1]}"
 
   if [[ "${1:-}" != "" ]]; then
-    echo -n " $1" 
+    echo -n " $1"
   fi
 
 
@@ -107,7 +107,7 @@ function display_intro_banner {
   print_step_info_header
 
   local dialog_message='Hello!
-This script will prepare the ZFS pools, then install and configure minimal Debian 11 with ZFS root on Hetzner hosting VPS instance
+This script will prepare the ZFS pools, then install and configure minimal Debian 12 with ZFS root on Hetzner hosting VPS instance
 The script with minimal changes may be used on any other hosting provider  supporting KVM virtualization and offering Debian-based rescue system.
 In order to stop the procedure, hit Esc twice during dialogs (excluding yes/no ones), or Ctrl+C while any operation is running.
 '
@@ -496,7 +496,7 @@ done
 
 echo "======= installing zfs on rescue system =========="
 
-  echo "zfs-dkms zfs-dkms/note-incompatible-licenses note true" | debconf-set-selections  
+  echo "zfs-dkms zfs-dkms/note-incompatible-licenses note true" | debconf-set-selections
 #  echo "y" | zfs
 # linux-headers-generic linux-image-generic
   apt install --yes software-properties-common dpkg-dev dkms
@@ -504,7 +504,8 @@ echo "======= installing zfs on rescue system =========="
   rm -f "$(which zpool)"
   echo -e "deb http://deb.debian.org/debian/ testing main contrib non-free\ndeb http://deb.debian.org/debian/ testing main contrib non-free\n" >/etc/apt/sources.list.d/bookworm-testing.list
   echo -e "Package: src:zfs-linux\nPin: release n=testing\nPin-Priority: 990\n" > /etc/apt/preferences.d/90_zfs
-  apt update  
+  echo -e "Package: linux-image*\nPin: release a=testing\nPin-Priority: 700\nVersion: 6.6.*\n" > /etc/apt/preferences.d/70_supported_kernel
+  apt update
   apt install -t testing --yes zfs-dkms zfsutils-linux
   rm /etc/apt/sources.list.d/bookworm-testing.list
   rm /etc/apt/preferences.d/90_zfs
@@ -639,6 +640,7 @@ DHCP=ipv4
 Address=${ip6addr_prefix}:1/64
 Gateway=fe80::1
 CONF
+chroot_execute 'cat <<CONF | debconf-set-selections'
 chroot_execute "systemctl enable systemd-networkd.service"
 
 echo "======= preparing the jail for chroot =========="
@@ -654,7 +656,7 @@ deb $c_deb_security_repo bookworm-security main contrib non-free non-free-firmwa
 deb $c_deb_packages_repo bookworm-backports main contrib non-free non-free-firmware
 CONF
 
-chroot_execute "apt update"
+chroot_execute 'echo -e "Package: linux-image*\nPin: release a=testing\nPin-Priority: 700\nVersion: 6.6.*\n" > /etc/apt/preferences.d/70_supported_kernel'
 
 echo "======= setting locale, console and language =========="
 chroot_execute "apt install --yes -qq locales debconf-i18n apt-utils"
@@ -775,7 +777,7 @@ if [[ $v_encrypt_rpool == "1" ]]; then
   echo "=========set up dropbear=============="
 
   chroot_execute "apt install --yes dropbear-initramfs"
-  
+
   mkdir -p "$c_zfs_mount_dir/etc/dropbear/initramfs"
   cp /root/.ssh/authorized_keys "$c_zfs_mount_dir/etc/dropbear/initramfs/authorized_keys"
 
